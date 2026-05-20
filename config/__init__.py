@@ -29,6 +29,7 @@ C_MEDIUM: float = C_LIGHT / N_WATER   # propagation speed in seawater (~2.256 ×
 # ─────────────────────────────────────────────────────────────────────────────
 # Parameter dataclasses  (frozen = hashable, immutable, accidental-write-safe)
 # ─────────────────────────────────────────────────────────────────────────────
+
 @dataclass(frozen=True)
 class WaterParams:
     """Inherent optical properties for one water type at the simulation wavelength."""
@@ -89,6 +90,14 @@ CLEAR_WATER = WaterParams(
 COASTAL_WATER = WaterParams(
     name="Coastal Water",
     c=0.775, a=0.220, b=0.555, g=0.924,
+)
+
+# --- Turbid harbour water (Petzold 1972, 530 nm) ─────────────────────────────
+# Used as the deepest layer in stratified ocean presets.
+# Represents high CDOM, detritus, and suspended particulate matter.
+TURBID_WATER = WaterParams(
+    name="Turbid Water",
+    c=2.19, a=0.366, b=1.824, g=0.945,
 )
 
 # --- Beam types ---------------------------------------------------------------
