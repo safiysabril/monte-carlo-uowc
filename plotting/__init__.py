@@ -35,6 +35,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import matplotlib.ticker as ticker
 
 from config import (
@@ -81,7 +82,7 @@ def _style_ax(ax, xlabel: str = "", ylabel: str = "", title: str = "") -> None:
     ax.tick_params(labelsize=_TICK_SZ)
 
 
-def _save(fig: plt.Figure, path: str) -> None:
+def _save(fig: Figure, path: str) -> None:
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"    Saved → {path}")
