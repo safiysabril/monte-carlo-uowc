@@ -35,11 +35,11 @@ from typing import Dict, List, NamedTuple, Tuple, Optional
 
 import numpy as np
 
-from uowc.config import (
+from config import (
     WaterParams, BeamParams, SimConfig,
     RECEIVER, ALL_WATERS, ALL_BEAMS,
 )
-from uowc.transport import propagate_batch, propagate_batch_inhomogeneous
+from transport import propagate_batch, propagate_batch_inhomogeneous
 
 
 # ─────────────────────────────────────────────────────────────────────────────

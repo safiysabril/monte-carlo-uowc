@@ -31,15 +31,15 @@ import os
 import sys
 import time
 
-from uowc.config    import SIM, ALL_WATERS, ALL_BEAMS
-from uowc.medium    import ALL_INHOMOGENEOUS_MEDIA
-from uowc.reporting import (
+from config    import SIM, ALL_WATERS, ALL_BEAMS
+from medium    import ALL_INHOMOGENEOUS_MEDIA
+from reporting import (
     print_run_header, print_summary_tables,
     print_inhomogeneous_header, print_inhomogeneous_summary,
 )
-from uowc.simulation import run_sweep, run_sweep_inhomogeneous, RunKey
-from uowc.metrics   import compute_all_metrics
-from uowc.plotting  import plot_all, plot_all_inhomogeneous
+from simulation import run_sweep, run_sweep_inhomogeneous, RunKey
+from metrics   import compute_all_metrics
+from plotting  import plot_all, plot_all_inhomogeneous
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,5 +137,5 @@ def main(out_dir: str = "/mnt/user-data/outputs") -> None:
 
 
 if __name__ == "__main__":
-    out = sys.argv[1] if len(sys.argv) > 1 else "/mnt/user-data/outputs"
+    out = sys.argv[1] if len(sys.argv) > 1 else "outputs"
     main(out)

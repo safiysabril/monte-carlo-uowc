@@ -34,8 +34,8 @@ import numpy as np
 from numpy import ndarray
 from typing import Dict, Tuple
 
-from uowc.config import SimConfig
-from uowc.physics import beer_lambert_power_dB
+from config import SimConfig
+from physics import beer_lambert_power_dB
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -50,7 +50,7 @@ import numpy as np
 from numpy import ndarray
 from typing import Tuple
 
-from uowc.physics import (
+from physics import (
     sample_step_length,
     sample_step_woodcock,
     accept_real_collision,

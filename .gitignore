@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated files
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+*.docx
+*.xlsx

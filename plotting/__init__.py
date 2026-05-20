@@ -37,12 +37,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from uowc.config import (
+from config import (
     WaterParams, BeamParams,
     CLEAR_WATER, COASTAL_WATER, COLLIMATED, DIFFUSED,
     ALL_WATERS, ALL_BEAMS, SimConfig,
 )
-from uowc.simulation import RunKey
+from simulation import RunKey
 
 
 # ─────────────────────────────────────────────────────────────────────────────
