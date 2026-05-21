@@ -46,8 +46,8 @@ References
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Sequence, Tuple
+from dataclasses import dataclass
+from typing import Tuple
 
 import numpy as np
 from numpy import ndarray
@@ -122,6 +122,17 @@ class MediumProfile:
 
         When True, the transport kernel skips the Woodcock acceptance test
         and uses the original faster homogeneous code path.
+        """
+        raise NotImplementedError
+
+    @property
+    def name(self) -> str:
+        """
+        Short descriptive label used as the RunKey identifier and in figure titles.
+
+        Every concrete subclass must implement this.
+        HomogeneousMedium exposes it via a @property delegating to params.name.
+        LayeredMedium and GradientMedium declare it as a dataclass field.
         """
         raise NotImplementedError
 

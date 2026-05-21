@@ -7,20 +7,15 @@ Separation-of-Concern role
 ---------------------------
   This module transforms raw Monte Carlo output (arrays of captured weights
   and times-of-flight) into physically meaningful channel metrics.
-  It knows nothing about how photons were propagated, how results are plotted,
-  or how computations were parallelised.
+  It knows nothing about how photons were propagated, parallelised, or plotted.
 
-  All public functions are pure (no side-effects, no I/O) and are safe to
-  call from tests, notebooks, or post-processing scripts independently.
-
-Metrics computed
-----------------
-  received_power_dB   — normalised received power (dB)
-  compute_cir         — channel impulse response histogram
-  rms_delay_spread    — RMS delay spread τ_rms (s)
-  frequency_response  — |H(f)| via zero-padded FFT
-  bandwidth_3dB       — 3 dB channel bandwidth (Hz)
-  compute_all_metrics — convenience wrapper: all metrics in one dict
+compute_all_metrics — n_launched parameter
+------------------------------------------
+  In adaptive mode n_launched ≠ cfg.n_photons per run (it varies by depth).
+  compute_all_metrics therefore accepts n_launched explicitly.
+  Passing it is mandatory when using the adaptive sweeps; for fixed-launch
+  runs you can pass result.n_launched (== cfg.n_photons) or let the function
+  fall back to cfg.n_photons via the optional parameter.
 
 References
 ----------
@@ -29,10 +24,10 @@ References
 """
 
 from __future__ import annotations
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from numpy import ndarray
-from typing import Dict, Tuple
 
 from config import SimConfig
 from physics import beer_lambert_power_dB
@@ -42,27 +37,22 @@ from physics import beer_lambert_power_dB
 # Received power
 # ─────────────────────────────────────────────────────────────────────────────
 
-def received_power_dB(weights: ndarray, n_total: int) -> float:
+def received_power_dB(weights: ndarray, n_launched: int) -> float:
     """
     Normalised received power in dB.
 
-        P_norm = Σ w_i / N_total
-
-    Dividing by N_total (launched, not captured) gives the fraction of input
-    power received — a direct estimator of the channel DC gain.
+        P_norm = Σ w_i / N_launched
 
     Parameters
     ----------
-    weights : captured photon weights, shape (M,)
-    n_total : total photons launched
-
-    Returns
-    -------
-    P_dB : normalised received power (dB)
+    weights    : captured photon weights, shape (M,)
+    n_launched : total photons launched (the correct denominator).
+                 In adaptive mode this equals n_rounds × cfg.n_photons
+                 and is obtained from RunResult.n_launched.
     """
-    if weights.size == 0:
+    if weights.size == 0 or n_launched == 0:
         return -np.inf
-    return float(10.0 * np.log10(np.maximum(weights.sum() / n_total, 1e-300)))
+    return float(10.0 * np.log10(np.maximum(weights.sum() / n_launched, 1e-300)))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -76,21 +66,9 @@ def compute_cir(
     n_bins:  int,
 ) -> Tuple[ndarray, ndarray]:
     """
-    Build the normalised channel impulse response (CIR) histogram.
+    Normalised channel impulse response (CIR) histogram.
 
-        h[k] = Σ_{t_i ∈ [k·Δt, (k+1)·Δt)} w_i  /  (Σ w_i)
-
-    Parameters
-    ----------
-    weights : captured photon weights,       shape (M,)
-    times   : corresponding times-of-flight, shape (M,) in seconds
-    dt      : bin width (s)
-    n_bins  : number of time bins
-
-    Returns
-    -------
-    t_axis : bin-centre time axis (s), shape (n_bins,)
-    h_norm : normalised CIR amplitude, shape (n_bins,)
+        h[k] = Σ_{t_i in bin k} w_i  /  Σ w_i
     """
     edges  = np.linspace(0.0, dt * n_bins, n_bins + 1)
     h, _   = np.histogram(times, bins=edges, weights=weights)
@@ -105,28 +83,16 @@ def compute_cir(
 
 def rms_delay_spread(weights: ndarray, times: ndarray) -> float:
     """
-    RMS delay spread  τ_rms (s) — the second central moment of the CIR.
+    RMS delay spread  τ_rms (s) — second central moment of the CIR.
 
-        τ̄     = Σ w_i · t_i  /  Σ w_i
-        τ_rms = √( Σ w_i · (t_i - τ̄)²  /  Σ w_i )
-
-    τ_rms characterises inter-symbol interference: a channel supports a
-    data rate R ≈ 1/(2π·τ_rms) without ISI equalisation.
-
-    Parameters
-    ----------
-    weights : captured photon weights,       shape (M,)
-    times   : corresponding times-of-flight, shape (M,) in seconds
-
-    Returns
-    -------
-    τ_rms in seconds, or NaN if fewer than 2 photons were captured.
+        τ̄     = Σ w_i t_i  /  Σ w_i
+        τ_rms = √( Σ w_i (t_i − τ̄)²  /  Σ w_i )
     """
     if weights.size < 2 or weights.sum() == 0.0:
         return float("nan")
-    w_sum  = weights.sum()
-    tau_m  = (weights * times).sum() / w_sum
-    return float(np.sqrt(((weights * (times - tau_m) ** 2).sum()) / w_sum))
+    w_sum = weights.sum()
+    tau_m = (weights * times).sum() / w_sum
+    return float(np.sqrt((weights * (times - tau_m) ** 2).sum() / w_sum))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,26 +105,15 @@ def frequency_response(
     pad_factor: int = 8,
 ) -> Tuple[ndarray, ndarray]:
     """
-    Compute the channel frequency response via zero-padded FFT.
+    Normalised channel frequency response via zero-padded FFT.
 
-        H(f) = ℱ{ h(t) }     (one-sided, real-input FFT)
-
-    Parameters
-    ----------
-    h_norm     : normalised CIR, shape (n_bins,)
-    dt         : CIR bin width (s)
-    pad_factor : zero-padding factor for frequency resolution
-
-    Returns
-    -------
-    freqs  : positive frequencies (Hz), shape (K,)
-    H_norm : |H(f)| normalised to DC  (H[0] = 1), shape (K,)
+        H(f) = ℱ{ h(t) }   (one-sided real-input FFT, normalised to DC)
     """
-    N_pad  = len(h_norm) * pad_factor
-    H      = np.fft.rfft(h_norm, n=N_pad)
-    H_mag  = np.abs(H)
-    dc     = H_mag[0] if H_mag[0] > 1e-30 else 1.0
-    freqs  = np.fft.rfftfreq(N_pad, d=dt)
+    N_pad = len(h_norm) * pad_factor
+    H     = np.fft.rfft(h_norm, n=N_pad)
+    H_mag = np.abs(H)
+    dc    = H_mag[0] if H_mag[0] > 1e-30 else 1.0
+    freqs = np.fft.rfftfreq(N_pad, d=dt)
     return freqs, H_mag / dc
 
 
@@ -167,19 +122,7 @@ def frequency_response(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def bandwidth_3dB(freqs: ndarray, H_norm: ndarray) -> float:
-    """
-    Find the −3 dB channel bandwidth: the first frequency where |H(f)|²
-    falls to 0.5 of its DC value (equivalently |H(f)| < 1/√2).
-
-    Parameters
-    ----------
-    freqs  : frequency axis (Hz), shape (K,)
-    H_norm : normalised |H(f)|,   shape (K,)
-
-    Returns
-    -------
-    Bandwidth in Hz.  Returns freqs[-1] if the response never drops below −3 dB.
-    """
+    """First frequency at which |H(f)| drops below 1/√2  (−3 dB)."""
     idx = np.where(H_norm < (1.0 / np.sqrt(2.0)))[0]
     return float(freqs[idx[0]]) if idx.size > 0 else float(freqs[-1])
 
@@ -194,35 +137,45 @@ def compute_all_metrics(
     cfg:        SimConfig,
     c:          float,
     link_range: float,
+    n_launched: Optional[int] = None,
 ) -> Dict:
     """
-    Compute every channel metric for a single (water, beam, range) run.
+    Compute every channel metric for a single (water-or-medium, beam, range) run.
 
     Parameters
     ----------
-    weights, times : raw captured photon data from `simulation.run_one`
-    cfg            : simulation config (for n_photons, dt_bin_s, n_time_bins)
-    c              : water attenuation coefficient (for Beer-Lambert reference)
+    weights, times : raw captured photon data (RunResult.weights / .times)
+    cfg            : simulation config (for dt_bin_s, n_time_bins)
+    c              : representative attenuation coefficient for Beer-Lambert ref
     link_range     : link length in metres
+    n_launched     : total photons launched — pass RunResult.n_launched.
+                     Defaults to cfg.n_photons for backward compatibility with
+                     fixed-launch code that does not yet use RunResult.
 
     Returns
     -------
     Dict with keys:
-      power_dB       — Monte Carlo normalised received power (dB)
-      beer_lambert_dB — Beer-Lambert reference power (dB)
-      delay_spread_s  — RMS delay spread (s)
+      power_dB        — MC normalised received power (dB)
+      beer_lambert_dB — Beer-Lambert reference (dB)
+      delay_spread_s  — RMS delay spread τ_rms (s)
       bandwidth_hz    — 3 dB bandwidth (Hz)
       t_axis          — CIR time axis (s), shape (n_bins,)
-      cir             — normalised CIR amplitude, shape (n_bins,)
+      cir             — normalised CIR, shape (n_bins,)
       freqs           — frequency axis (Hz)
       fr              — normalised |H(f)|
+      n_launched      — total photons launched (useful for reporting tables)
+      n_captured      — number of captured photons (useful for quality check)
     """
-    p_dB  = received_power_dB(weights, cfg.n_photons)
-    p_bl  = beer_lambert_power_dB(c, link_range)
-    ds    = rms_delay_spread(weights, times) if weights.size > 1 else float("nan")
-    t_ax, h = compute_cir(weights, times, cfg.dt_bin_s, cfg.n_time_bins)
-    freqs, Hn = frequency_response(h, cfg.dt_bin_s)
-    bw    = bandwidth_3dB(freqs, Hn)
+    # ── denominator for received power ────────────────────────────────────
+    n_total = n_launched if n_launched is not None else cfg.n_photons
+
+    p_dB = received_power_dB(weights, n_total)
+    p_bl = beer_lambert_power_dB(c, link_range)
+    ds   = rms_delay_spread(weights, times) if weights.size > 1 else float("nan")
+
+    t_ax, h    = compute_cir(weights, times, cfg.dt_bin_s, cfg.n_time_bins)
+    freqs, Hn  = frequency_response(h, cfg.dt_bin_s)
+    bw         = bandwidth_3dB(freqs, Hn)
 
     return {
         "power_dB":        p_dB,
@@ -233,4 +186,6 @@ def compute_all_metrics(
         "cir":             h,
         "freqs":           freqs,
         "fr":              Hn,
+        "n_launched":      n_total,      # store for reporting
+        "n_captured":      weights.size, # store for quality diagnostics
     }

@@ -46,7 +46,7 @@ Design principles
 
 from __future__ import annotations
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Sequence
 
 import numpy as np
 import matplotlib
@@ -56,7 +56,6 @@ from matplotlib.figure import Figure
 import matplotlib.ticker as ticker
 
 from config import (
-    WaterParams, BeamParams,
     CLEAR_WATER, COASTAL_WATER, COLLIMATED, DIFFUSED,
     ALL_WATERS, ALL_BEAMS, SimConfig,
 )
