@@ -31,7 +31,7 @@ from uowc.analysis  import (to_dataframe, to_parquet,
 from uowc.analysis.plots import plot_all_diagnostics
 
 
-def main(out_dir: str = "/mnt/user-data/outputs") -> None:
+def main(out_dir: str = "/uowc/outputs") -> None:
     os.makedirs(out_dir, exist_ok=True)
     t0 = time.perf_counter()
 
@@ -91,5 +91,5 @@ def main(out_dir: str = "/mnt/user-data/outputs") -> None:
 
 
 if __name__ == "__main__":
-    out = sys.argv[1] if len(sys.argv) > 1 else "/mnt/user-data/outputs"
+    out = sys.argv[1] if len(sys.argv) > 1 else "/uowc/outputs"
     main(out)
