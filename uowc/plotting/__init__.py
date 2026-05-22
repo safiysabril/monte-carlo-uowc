@@ -55,11 +55,11 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import matplotlib.ticker as ticker
 
-from config import (
+from uowc.config import (
     CLEAR_WATER, COASTAL_WATER, COLLIMATED, DIFFUSED,
     ALL_WATERS, ALL_BEAMS, SimConfig,
 )
-from simulation import RunKey
+from uowc.simulation import RunKey
 
 
 # ─────────────────────────────────────────────────────────────────────────────

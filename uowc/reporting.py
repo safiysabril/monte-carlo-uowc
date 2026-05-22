@@ -16,11 +16,11 @@ Separation-of-Concern role
 from __future__ import annotations
 from typing import Dict, Sequence
 
-from config import (
+from uowc.config import (
     WaterParams, BeamParams,
     ALL_WATERS, ALL_BEAMS, SimConfig,
 )
-from simulation import RunKey
+from uowc.simulation import RunKey
 
 
 # ─────────────────────────────────────────────────────────────────────────────

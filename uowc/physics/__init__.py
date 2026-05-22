@@ -32,7 +32,7 @@ from __future__ import annotations
 import numpy as np
 from numpy import ndarray
 
-from config import C_MEDIUM
+from uowc.config import C_MEDIUM
 
 
 # ─────────────────────────────────────────────────────────────────────────────

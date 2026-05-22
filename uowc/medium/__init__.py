@@ -52,7 +52,7 @@ from typing import Tuple
 import numpy as np
 from numpy import ndarray
 
-from config import WaterParams, CLEAR_WATER, COASTAL_WATER, TURBID_WATER
+from uowc.config import WaterParams, CLEAR_WATER, COASTAL_WATER, TURBID_WATER
 
 
 # ─────────────────────────────────────────────────────────────────────────────
